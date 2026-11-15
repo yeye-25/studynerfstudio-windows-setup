@@ -1,3 +1,4 @@
+<img width="1265" height="1401" alt="image" src="https://github.com/user-attachments/assets/2221967f-6cc5-4c4c-adde-39912dfc7d7b" />
 # Day 1: Windows 下 Nerfstudio + 3D Gaussian Splatting 底层环境搭建实录
 
 ## 📌 项目背景
