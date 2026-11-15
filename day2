@@ -1,0 +1,33 @@
+# Day 2: COLMAP 依赖配置与自建数据集排坑实录
+
+## 📌 项目背景
+在成功跑通官方测试集后，尝试使用自己拍摄的照片训练 3D 模型，重点解决数据处理工具链（FFmpeg、COLMAP）的兼容性问题。
+
+## 🛠️ 核心踩坑与解决方案
+
+### 1. 缺失 FFmpeg
+*   **报错**：`Could not find ffmpeg. Please install ffmpeg.`
+*   **解决**：用 winget 下载时常因网络超时失败，用 Conda 安装常遇到 GBK 编码报错。**最稳方案**：直接去官网下载 `ffmpeg-release-essentials.zip`，解压后将 `bin` 文件夹路径加到系统环境变量 `Path` 中。
+
+### 2. COLMAP 版本地狱（flann vs faiss 冲突）
+*   **报错**：`Failed to read faiss index...` 或 `unrecognised option '--SiftExtraction.use_gpu'`
+*   **原因**：通过 Conda 安装的 COLMAP 3.13 太新。2025年5月后，COLMAP 底层从 `flann` 切换到 `faiss`，且修改了参数名，导致 Nerfstudio 1.1.5 无法兼容。
+*   **解决**：
+    1. **代码级绕过**：修改 Nerfstudio 源码 `colmap_utils.py` 中的参数名。
+    2. **穷举匹配**：在命令后加 `--matching-method exhaustive` 绕过词汇树匹配。
+    3. **硬核方案**：手动敲 COLMAP 命令行，逐行提取特征、匹配、建立稀疏重建。
+
+### 3. 照片重叠度低导致重建失败
+*   **现象**：使用 62 张照片，COLMAP 疯狂报 `Discarding reconstruction due to bad initial pair`，最终只找出了 21 张照片的相机位姿（匹配率仅 33.87%）。
+*   **原因**：拍摄时走动太快，相邻照片没有共同特征（重叠度太低），且部分照片可能曝光过度或模糊。
+*   **解决**：先用成功算出的 21 张图片模型，通过 `--skip-colmap` 手动导入 Nerfstudio 跑通流程。
+    ```cmd
+    ns-process-data images --data "原图路径" --output-dir "输出路径" --skip-colmap --colmap-model-path "COLMAP生成的稀疏模型路径"
+拍摄心得（极其重要）
+慢走、密拍：保证相邻两张照片有 70% 以上的画面重叠。
+光线充足、不反光：避免物体表面反光导致特征提取失败。
+稳：千万别手抖拍糊，模糊的照片是 COLMAP 的天敌。
+
+🚀 Day 2 成果
+掌握了 FFmpeg 和 COLMAP 在 Windows 下的底层配置。
+学会了手动干预 COLMAP 流程，并在照片质量不高的情况下，成功用 21 张图跑通了自建数据集的训练。
